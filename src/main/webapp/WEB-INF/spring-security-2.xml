@@ -1,0 +1,86 @@
+<beans:beans xmlns="http://www.springframework.org/schema/security"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+    http://www.springframework.org/schema/security
+    http://www.springframework.org/schema/security/spring-security-4.1.xsd">
+
+	<http auto-config="false" use-expressions="true" entry-point-ref="myCustomAuthenticationEntryPoint">
+		<intercept-url pattern="/resources/**" access="permitAll" />
+		<intercept-url pattern="/hello*" access="hasRole('ROLE_ADMIN')" />
+
+		<intercept-url pattern="/mylogin" access="permitAll" requires-channel="https" />
+		<intercept-url pattern="/mylogout1" access="permitAll" requires-channel="any"/>
+
+		<custom-filter position="FORM_LOGIN_FILTER" ref="myUsernamePasswordAuthFilter" />
+		<custom-filter after="FORM_LOGIN_FILTER"    ref="quickerVerifyOtpFilter"/>
+
+		<!--<form-login login-page="/login" default-target-url="/helloworld"
+			authentication-failure-url="/loginError" />-->
+
+		<logout delete-cookies="JSESSIONID"  logout-success-url="/" logout-url="/j_spring_security_logout" />
+		<csrf disabled="true" />
+	</http>
+
+	<authentication-manager id="myAuthenticationManager">
+		<authentication-provider>
+			<user-service>
+				<user name="aniket" password="1234" authorities="ROLE_ADMIN" />
+				<user name="yash"   password="1234" authorities="ROLE_ADMIN" />
+			</user-service>
+		</authentication-provider>
+	</authentication-manager>
+
+	<beans:bean id="myUsernamePasswordAuthFilter" class="com.chahar.springmvc.filter.QuickerUsernamePasswordFilter">
+		<!--<beans:property name="sessionAuthenticationStrategy" ref="myCompositeSessionAuthenticationStrategies" />-->
+		<beans:property name="authenticationManager" ref="myAuthenticationManager" />
+		<!--<beans:property name="usernameParameter" value="myusername" />
+		<beans:property name="passwordParameter" value="mypassword" />-->
+		<beans:property name="authenticationFailureHandler" ref="myAuthenticationFailureHandler" />
+		<beans:property name="authenticationSuccessHandler" ref="myAuthenticationSuccessHandler" />
+		<beans:property name="otpAuthenticationRequired" value="true"/>
+		<beans:property name="otpGenerator" ref="quickerOtpGenerator"/>
+	</beans:bean>
+
+	<beans:bean id="quickerVerifyOtpFilter" class="com.chahar.springmvc.filter.QuickerVerifyOtpFilter">
+		<beans:property name="authenticationManager" ref="myAuthenticationManager" />
+		<beans:property name="authenticationFailureHandler" ref="myAuthenticationFailureHandler" />
+		<beans:property name="authenticationSuccessHandler" ref="myAuthenticationSuccessHandler" />
+	</beans:bean>
+
+	<beans:bean id="myAuthenticationFailureHandler" class="com.chahar.springmvc.filter.MySimpleUrlAuthenticationFailureHandler">
+		<!-- configure defaultFailureUrl otherwise it will send http 401 error code when authentication failed(wrong credential,maximum session exceeds) -->
+		<beans:constructor-arg name="defaultFailureUrl" value="/login" index="0"/>
+		<beans:property name="useForward" value="false" />
+	</beans:bean>
+
+	<beans:bean id="myAuthenticationSuccessHandler" class="com.chahar.springmvc.filter.MySimpleUrlAuthenticationSuccessHandler">
+		<beans:constructor-arg name="defaultTargetUrl" value="/helloworld" index="0"/>
+	</beans:bean>
+
+	<beans:bean id="myCompositeSessionAuthenticationStrategies" class="org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy">
+		<beans:constructor-arg>
+			<beans:list>
+				<beans:bean class="org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy">
+					<beans:constructor-arg name="sessionRegistry" ref="mySessionRegistry"/>
+				</beans:bean>
+				<beans:bean class="org.springframework.security.web.authentication.session.ConcurrentSessionControlAuthenticationStrategy">
+					<beans:constructor-arg name="sessionRegistry" ref="mySessionRegistry" index="0"/>
+					<beans:property name="maximumSessions" value="2" />
+					<beans:property name="exceptionIfMaximumExceeded" value="true" />
+				</beans:bean>
+				<!-- <bean class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy" /> -->
+			</beans:list>
+		</beans:constructor-arg>
+	</beans:bean>
+
+	<beans:bean id="mySessionRegistry" class="org.springframework.security.core.session.SessionRegistryImpl" />
+
+	<beans:bean id="myCustomAuthenticationEntryPoint" class="org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint">
+		<beans:constructor-arg name="loginFormUrl" value="/login" index="0"/>
+	</beans:bean>
+
+	<beans:bean id="quickerOtpGenerator" class="com.chahar.springmvc.otp.DefaultOtpGenerator"/>
+
+</beans:beans>

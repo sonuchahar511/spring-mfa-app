@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<beans:beans  xmlns="http://www.springframework.org/schema/security"
+	xmlns:beans="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-4.1.xsd
+	http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd">
+	
+	<http auto-config="false" entry-point-ref="mySessionManagementAuthenticationEntryPoint" >
+	
+		<intercept-url pattern="/admin**" access="hasRole('ROLE_ADMIN')" requires-channel="https" />
+		<intercept-url pattern="/user" access="hasAnyRole('ROLE_USER','ROLE_DEVELOPERS')" requires-channel="https"/>
+		<intercept-url pattern="/allUser**" access="hasRole('ROLE_ADMIN')" requires-channel="https"/>
+		<intercept-url pattern="/registration" access="hasRole('ROLE_SUPER_ADMIN')" requires-channel="https"/>
+		
+		<intercept-url pattern="/mylogin" access="permitAll" requires-channel="https" />
+		<intercept-url pattern="/mylogout1" access="permitAll" requires-channel="any"/>
+		
+		<intercept-url pattern="/index" access="permitAll" requires-channel="any"/>
+		<intercept-url pattern="/invalidSessionUrl" access="permitAll" requires-channel="any"/>
+		
+		<port-mappings>
+			<port-mapping http="8080" https="8443"/>
+		</port-mappings>
+		
+	    <access-denied-handler error-page="/403" />
+	    
+	    <custom-filter position="CONCURRENT_SESSION_FILTER" ref="myConcurrentSessionFilter" />
+	    <custom-filter position="FORM_LOGIN_FILTER" ref="myUsernamePasswordAuthFilter" />
+	    
+	    <session-management session-authentication-strategy-ref="myCompositeSessionAuthenticationStrategies"
+	    	 invalid-session-url="/invalidSessionUrl" />
+	    	 
+		<logout delete-cookies="JSESSIONID" />	    
+	</http>
+	<authentication-manager id="external-db-by-authentication-manager">
+	  <authentication-provider ref="myCustomAuthenticationProvider" />
+	</authentication-manager>
+</beans:beans>	

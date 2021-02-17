@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<beans  xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd">
+	
+	<!-- <bean id="myBasicFilter" class="com.chahar.web.filter.MyBasicAuthenticationFilter">
+		 <constructor-arg name="authenticationManager" ref="external-db-by-authentication-manager" />
+		 <constructor-arg name="authenticationEntryPoint" ref="myBasicEntryPoint" />
+	</bean>
+	<bean id="myBasicEntryPoint" class="org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint">
+		<property name="realmName" value="Basic Authentication realm for my SpringSecurityDemoApp" />
+	</bean> -->
+	
+	<!-- <bean id="myDigestFilter" class="org.springframework.security.web.authentication.www.DigestAuthenticationFilter">
+	  <property name="userDetailsService" ref="myUserService"/>
+	  <property name="authenticationEntryPoint" ref="myDigestEntryPoint"/>
+	  <property name="userCache" ref="myUserCache"/>
+	</bean>
+	<bean id="myDigestEntryPoint" class="org.springframework.security.web.authentication.www.DigestAuthenticationEntryPoint">
+	  <property name="realmName" value="Digest Authentication realm for my SpringSecurityDemoApp"/>
+	  <property name="key" value="acegi"/>
+	  <property name="nonceValiditySeconds" value="120"/>
+	</bean> -->
+	
+	<!--  session management starts -->
+	<bean id="mySessionManagementAuthenticationEntryPoint" class="org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint">
+		<constructor-arg name="loginFormUrl" value="/mylogin" index="0"/>
+	</bean>
+	<bean id="myAuthenticationFailureHandler" class="com.chahar.web.filter.MySimpleUrlAuthenticationFailureHandler">
+		<!-- configure defaultFailureUrl otherwise it will send http 401 error code when authentication failed(wrong credential,maximum session exceeds) -->
+		<constructor-arg name="defaultFailureUrl" value="/mylogin" index="0"/>
+		<property name="useForward" value="true" />
+	</bean>
+	<bean id="myUsernamePasswordAuthFilter" class="org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter">
+		<property name="sessionAuthenticationStrategy" ref="myCompositeSessionAuthenticationStrategies" />
+		<property name="authenticationManager" ref="external-db-by-authentication-manager" />
+		<property name="usernameParameter" value="myusername" />
+		<property name="passwordParameter" value="mypassword" />
+		<property name="authenticationFailureHandler" ref="myAuthenticationFailureHandler" />
+	</bean>
+	<bean id="myConcurrentSessionFilter" class="org.springframework.security.web.session.ConcurrentSessionFilter">
+		<constructor-arg name="sessionRegistry" ref="mySessionRegistry" index="0" /> 
+		<constructor-arg name="expiredUrl" value="/sessionExpired" index="1" />
+	</bean>
+	<bean id="myCompositeSessionAuthenticationStrategies" class="org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy">
+		<constructor-arg>
+			<list>
+				<bean class="org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy">
+					<constructor-arg name="sessionRegistry" ref="mySessionRegistry"/>
+				</bean>
+				<bean class="org.springframework.security.web.authentication.session.ConcurrentSessionControlAuthenticationStrategy">
+					<constructor-arg name="sessionRegistry" ref="mySessionRegistry" index="0"/>
+					<property name="maximumSessions" value="2" />
+					<property name="exceptionIfMaximumExceeded" value="true" />
+				</bean>
+				<!-- <bean class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy" /> -->
+			</list>
+		</constructor-arg>
+	</bean>
+	<bean id="mySessionRegistry" class="org.springframework.security.core.session.SessionRegistryImpl" />
+ 	 <!--  session management ends -->
+ 	 
+	<bean id="myCustomAuthenticationProvider" class="com.chahar.service.impl.CustomAuthenticationProvider">
+		<property name="userService" ref="myUserService"/>
+		<property name="passwordEncoderService" ref="myPasswordEncoderService"/>
+	</bean>
+	 	 
+ 	 <bean id="myMethodSecuritySecurityHandler" class="org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler">
+ 	 	<property name="permissionEvaluator" ref="myPermissionEvaluator" />
+ 	 </bean>	
+ 	 <bean id="myPermissionEvaluator" class="com.chahar.web.handler.CustomPermissionEvaluator"/>	
+ 	 
+</beans>
