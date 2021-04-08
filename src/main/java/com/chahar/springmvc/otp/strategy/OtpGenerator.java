@@ -1,4 +1,4 @@
-package com.chahar.springmvc.otp;
+package com.chahar.springmvc.otp.strategy;
 
 /**
  * Implementations of this interface generate random token strings.

@@ -1,7 +1,10 @@
 package com.chahar.springmvc.filter;
 
 import com.chahar.springmvc.filter.token.OtpUserToken;
-import com.chahar.springmvc.otp.OtpGenerator;
+import com.chahar.springmvc.otp.strategy.LookupStrategy;
+import com.chahar.springmvc.otp.strategy.OtpGenerator;
+import com.chahar.springmvc.otp.strategy.SendStrategy;
+import com.chahar.springmvc.otp.strategy.impl.LocalTokenStore;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -12,6 +15,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 
+import javax.mail.*;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
@@ -19,6 +25,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Properties;
 
 public class QuickerUsernamePasswordFilter extends UsernamePasswordAuthenticationFilter {
     private boolean postOnly = true;
@@ -27,6 +34,10 @@ public class QuickerUsernamePasswordFilter extends UsernamePasswordAuthenticatio
     private SessionAuthenticationStrategy sessionStrategy = new NullAuthenticatedSessionStrategy();
     private boolean continueChainBeforeSuccessfulAuthentication = false;
     private OtpGenerator otpGenerator;
+    private LookupStrategy lookupStrategy;
+    private LocalTokenStore tokenStore;
+    private SendStrategy sendStrategy;
+
 
     public Authentication attemptAuthentication(HttpServletRequest request,
                                                 HttpServletResponse response) throws AuthenticationException {
@@ -57,12 +68,24 @@ public class QuickerUsernamePasswordFilter extends UsernamePasswordAuthenticatio
 
             Authentication authentication = this.getAuthenticationManager().authenticate(authRequest);
             logger.info("Quicker: authentication=" + authentication);
+            if (authentication.isAuthenticated()) {
+                // Generate OTP token
+                String contact = lookupStrategy.lookup(authentication.getName());
+                contact = "chahar.exp@gmail.com";
+                if (contact != null) {
+                    String otp = otpGenerator.generateToken();
+                    tokenStore.putToken(authentication.getName(), otp);
+                    //send();
+                    sendStrategy.send(otp, contact);
 
-            OtpUserToken otpUserToken = new OtpUserToken(authentication, otpGenerator.generateToken());
-            SecurityContextHolder.getContext().setAuthentication(otpUserToken);
-            request.getSession(false).setAttribute("userToken", otpUserToken);
+                    OtpUserToken otpUserToken = new OtpUserToken(authentication, otp);
+                    SecurityContextHolder.getContext().setAuthentication(otpUserToken);
+                    request.getSession(false).setAttribute("userToken", otpUserToken);
 
-            return otpUserToken;
+                    return otpUserToken;
+                }
+            }
+            return super.attemptAuthentication(request, response);
         } else {
             return super.attemptAuthentication(request, response);
         }
@@ -98,7 +121,7 @@ public class QuickerUsernamePasswordFilter extends UsernamePasswordAuthenticatio
 
                 res.setContentLength(responseContent.length());
                 res.getWriter().write(responseContent);
-                logger.info(">>> OTP="+ otp+ " for authentication="+ ((OtpUserToken) authResult).getAuthentication());
+                logger.info(">>> OTP=" + otp + " for authentication=" + ((OtpUserToken) authResult).getAuthentication());
             } else {
                 sessionStrategy.onAuthentication(authResult, request, response);
             }
@@ -150,4 +173,70 @@ public class QuickerUsernamePasswordFilter extends UsernamePasswordAuthenticatio
     public void setOtpGenerator(OtpGenerator otpGenerator) {
         this.otpGenerator = otpGenerator;
     }
+
+    public void setLookupStrategy(LookupStrategy lookupStrategy) {
+        this.lookupStrategy = lookupStrategy;
+    }
+
+    public void setTokenStore(LocalTokenStore tokenStore) {
+        this.tokenStore = tokenStore;
+    }
+
+    public void setSendStrategy(SendStrategy sendStrategy) {
+        this.sendStrategy = sendStrategy;
+    }
+
+    private void send() {
+        // Recipient's email ID needs to be mentioned.
+        String to = "chahar.exp@gmail.com";//change accordingly
+
+        // Sender's email ID needs to be mentioned
+        String from = "demo123456777@gmail.com";//change accordingly
+        final String username = "demo123456777@gmail.com";//change accordingly
+        final String password = "Rocket@90";//change accordingly
+
+        // Assuming you are sending email through relay.jangosmtp.net
+        String host = "smtp.gmail.com";
+
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", host);
+        props.put("mail.smtp.port", "587");
+
+        // Get the Session object.
+        Session session = Session.getInstance(props,
+                new javax.mail.Authenticator() {
+                    protected PasswordAuthentication getPasswordAuthentication() {
+                        return new PasswordAuthentication(username, password);
+                    }
+                });
+        try {
+            // Create a default MimeMessage object.
+            Message message = new MimeMessage(session);
+
+            // Set From: header field of the header.
+            message.setFrom(new InternetAddress(from));
+
+            // Set To: header field of the header.
+            message.setRecipients(Message.RecipientType.TO,
+                    InternetAddress.parse(to));
+
+            // Set Subject: header field
+            message.setSubject("Testing Subject");
+
+            // Now set the actual message
+            message.setText("Hello, this is sample for to check send "
+                    + "email using JavaMailAPI ");
+
+            // Send message
+            Transport.send(message);
+
+            System.out.println("Sent message successfully....");
+
+        } catch (MessagingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

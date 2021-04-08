@@ -41,6 +41,9 @@
 		<beans:property name="authenticationSuccessHandler" ref="myAuthenticationSuccessHandler" />
 		<beans:property name="otpAuthenticationRequired" value="true"/>
 		<beans:property name="otpGenerator" ref="quickerOtpGenerator"/>
+		<beans:property name="tokenStore" ref="tokenStore"/>
+		<beans:property name="sendStrategy" ref="sendStrategy"/>
+		<beans:property name="lookupStrategy" ref="lookupStrategy"/>
 	</beans:bean>
 
 	<beans:bean id="quickerVerifyOtpFilter" class="com.chahar.springmvc.filter.QuickerVerifyOtpFilter">
@@ -81,6 +84,26 @@
 		<beans:constructor-arg name="loginFormUrl" value="/login" index="0"/>
 	</beans:bean>
 
-	<beans:bean id="quickerOtpGenerator" class="com.chahar.springmvc.otp.DefaultOtpGenerator"/>
+	<beans:alias name="emailSendStrategy" alias="sendStrategy"/>
+	<beans:alias name="localTokenStore" alias="tokenStore"/>
+	<beans:alias name="localLookupStrategy" alias="lookupStrategy"/>
+
+	<beans:bean id="quickerOtpGenerator" class="com.chahar.springmvc.otp.strategy.impl.DefaultOtpGenerator"/>
+	<beans:bean id="emailSendStrategy" class="com.chahar.springmvc.otp.strategy.impl.EmailSendStrategy">
+		<beans:constructor-arg name="server" value="smtp.gmail.com" index="0"/>
+		<beans:constructor-arg name="port" value="587" index="1"/>
+		<beans:constructor-arg name="fromAddr" value="demo123456777@gmail.com" index="2"/>
+
+		<beans:property name="username" value="demo123456777@gmail.com" />
+		<beans:property name="password" value="Rocket@90" />
+		<beans:property name="useTls" value="true" />
+		<beans:property name="subject" value="One Time Password (OTP) for Dell Admin Console Login" />
+		<beans:property name="messageText" value="One Time Password (OTP) for Dell Admin Console Login is " />
+	</beans:bean>
+
+	<beans:bean id="localTokenStore" class="com.chahar.springmvc.otp.strategy.impl.LocalTokenStore">
+		<beans:constructor-arg name="maxLifetime" value="300" index="0"/>
+	</beans:bean>
+	<beans:bean id="localLookupStrategy" class="com.chahar.springmvc.otp.strategy.impl.LocalLookupStrategy"/>
 
 </beans:beans>

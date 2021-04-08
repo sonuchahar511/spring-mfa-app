@@ -1,4 +1,6 @@
-package com.chahar.springmvc.otp;
+package com.chahar.springmvc.otp.strategy.impl;
+
+import com.chahar.springmvc.otp.strategy.OtpGenerator;
 
 import java.security.SecureRandom;
 import java.util.Random;
